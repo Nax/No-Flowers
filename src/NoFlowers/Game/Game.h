@@ -6,10 +6,13 @@
 #include <NoFlowers/Interface/Camera.h>
 #include <NoFlowers/Render/Shader.h>
 #include <NoFlowers/Render/VertexBuffer.h>
+#include <NoFlowers/Game/GameStateMain.h>
 
 struct Game
 {
     bool            running;
+    GameStateMain*  stateMain;
+    GameState*      stateActive;
     SDL_Window*     window;
     SDL_GLContext   gl;
     Camera          camera;

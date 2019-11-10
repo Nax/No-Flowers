@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <chrono>
-#include <NoFlowers/Game.h>
+#include <NoFlowers/Game/Game.h>
 #include <NoFlowers/Render/OpenGL.h>
 #include <NoFlowers/Render/ShaderBuilder.h>
 #include <NoFlowers/Render/VertexBufferBuilder.h>
@@ -165,6 +165,9 @@ void gameInit(Game* g)
     g->camera.setPerspective(90.f, 800.f / 600.f, 0.1f, 1000.f);
     gameInitShader(g);
     gameInitVertexBuffer(g);
+
+    g->stateMain = new GameStateMain(*g);
+    g->stateActive = g->stateMain;
 }
 
 void gameQuit(Game* g)
@@ -189,6 +192,7 @@ void gameLoop(Game* game)
     uint64_t acc;
 
     game->running = true;
+    game->stateActive->init();
     acc = 0;
     last = Clock::now();
     while (game->running)
@@ -213,8 +217,10 @@ void gameUpdate(Game* game)
     {
         if (e.type == SDL_QUIT)
             game->running = false;
+        game->stateActive->handleEvent(e);
     }
 
+    game->stateActive->update();
     game->camera.move(Vector3f(0.f, 0.01f, 0.f));
 }
 
@@ -236,6 +242,7 @@ void gameRender(Game* game, float dt)
     glEnable(GL_MULTISAMPLE);
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    game->stateMain->render(dt);
     game->shader.bind();
     game->shader.uniform(ShaderUniform::MVP, mvp);
     game->vb.bind();

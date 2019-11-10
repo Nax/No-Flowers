@@ -1,4 +1,4 @@
-#include <NoFlowers/Game.h>
+#include <NoFlowers/Game/Game.h>
 
 int main(int argc, char** argv)
 {
