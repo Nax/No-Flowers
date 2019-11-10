@@ -20,8 +20,10 @@ if (SUPERBUILD)
             "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
             "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DSDL2_DIR=${CMAKE_BINARY_DIR}/_vendor"
+            "-DGLEW_DIR=${CMAKE_BINARY_DIR}/_vendor"
         DEPENDS
         SDL2
+        GLEW
     )
     ExternalProject_Add_Step(
 		NoFlowers
