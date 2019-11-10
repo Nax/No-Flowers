@@ -1,48 +1,43 @@
 #ifndef MATH_VECTOR_H
 #define MATH_VECTOR_H 1
 
-#include <cmath>
-
-template <typename T, unsigned Dimension>
-class Vector;
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
 
 namespace priv
 {
-    /* Helper */
-    template <int L, int R>
-    struct VectorHelperMin
+    template <typename T, size_t N>
+    struct VectorStorage
     {
-        enum { value = (L > R) ? R : L };
-    };
-
-    /* Vector data */
-    template <typename T, unsigned Dimension>
-    struct VectorData
-    {
-        VectorData() {}
-        T   _data[Dimension];
-    };
-
-    template <typename T>
-    struct VectorData<T, 1>
-    {
-        VectorData() {}
-        union
-        {
-            T   _data[1];
-            T   x;
+        union {
+            T   _data[N];
+            struct {
+                T   x;
+                T   y;
+                T   z;
+                T   w;
+            };
         };
     };
 
     template <typename T>
-    struct VectorData<T, 2>
+    struct VectorStorage<T, 1>
     {
-        VectorData() {}
-        union
-        {
+        union {
+            T   _data[1];
+            struct {
+                T   x;
+            };
+        };
+    };
+
+    template <typename T>
+    struct VectorStorage<T, 2>
+    {
+        union {
             T   _data[2];
-            struct
-            {
+            struct {
                 T   x;
                 T   y;
             };
@@ -50,184 +45,200 @@ namespace priv
     };
 
     template <typename T>
-    struct VectorData<T, 3>
+    struct VectorStorage<T, 3>
     {
-        VectorData() {}
-        union
-        {
-            T               _data[3];
-            struct
-            {
-                T           x;
-                T           y;
-                T           z;
+        union {
+            T   _data[3];
+            struct {
+                T   x;
+                T   y;
+                T   z;
             };
-            Vector<T, 2>    xy;
         };
     };
 
-    template <typename T>
-    struct VectorData<T, 4>
-    {
-        VectorData() {}
-        union
-        {
-            T               _data[4];
-            struct
-            {
-                T           x;
-                T           y;
-                T           z;
-                T           w;
-            };
-            Vector<T, 2>    xy;
-            Vector<T, 3>    xyz;
-        };
-    };
-
-    /* Vector builder */
-    template <typename T, int Size>
+    template <typename T, size_t N, size_t Count>
     struct VectorBuilder
     {
         template <typename... Args>
-        static void construct(T* data, T value, Args... args)
+        static void build(T* dst, const Args& ... args)
         {
-            *data = value;
-            VectorBuilder<T, Size - 1>::construct(data + 1, args...);
+            static_assert(Count >= N, "Missing elements in vector");
+            static_assert(Count <= N, "Extra elements in vector");
+
+            (void)dst;
+            (void)(sizeof...(args));
         }
 
-        template <typename OtherT, unsigned OtherDimension, typename... Args>
-        static void construct(T* data, const Vector<OtherT, OtherDimension>& other, Args... args)
+        template <typename TT, typename... Args>
+        static typename std::enable_if<std::is_convertible<TT, T>::value>::type build(T* dst, TT value, const Args& ... args)
         {
-            for (unsigned i = 0; i < VectorHelperMin<OtherDimension, Size>::value; ++i)
-            {
-                data[i] = T(other[i]);
-            }
-            VectorBuilder<T, Size - VectorHelperMin<OtherDimension, Size>::value>::construct(data + OtherDimension, args...);
-        }
+            static_assert(Count < N, "Extra elements in vector");
 
-        static void construct(T* data)
-        {
-            *data = T();
-            VectorBuilder<T, Size - 1>::construct(data + 1, args...);
+            dst[Count] = T(value);
+            ::priv::VectorBuilder<T, N, Count + 1>::build(dst, args...);
         }
     };
 
-    template <typename T>
-    struct VectorBuilder<T, 0>
-    {
-        static void construct(T* data)
-        {
+};
 
-        }
-    };
-}
-
-template <typename T, unsigned Dimension>
-class Vector : public priv::VectorData<T, Dimension>
+template <typename T, size_t N>
+class Vector : public priv::VectorStorage<T, N>
 {
 public:
+    using Type = T;
+    static const size_t Size = N;
+
+    static_assert(N > 0, "Must have non-zero size");
 
     Vector()
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] = T();
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] = T();
     }
 
     template <typename Head, typename... Args>
-    Vector(Head head, Args... args)
+    Vector(const Head& head, const Args& ... args)
     {
-        priv::VectorBuilder<T, Dimension>::construct(_data, head, args...);
+        priv::VectorBuilder<T, N, 0>::build(this->_data, head, args...);
     }
 
-    Vector<T, Dimension>& operator=(const Vector<T, Dimension>& rhs)
+    template <typename TT, size_t NN>
+    explicit Vector(const Vector<TT, NN>& rhs)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] = rhs._data[i];
+        const size_t max = N < NN ? N : NN;
+
+        for (size_t i = 0; i < max; ++i)
+            this->_data[i] = T(rhs._data[i]);
+        for (size_t i = max; i < N; ++i)
+            this->_data[i] = T();
+    }
+
+    template <typename TT, size_t NN, typename Head, typename... Args>
+    Vector(const Vector<TT, NN>& rhs, const Head& head, const Args& ... args)
+    {
+        static_assert(NN < N, "Extra elements in vector");
+
+        for (size_t i = 0; i < NN; ++i)
+            this->_data[i] = T(rhs._data[i]);
+        ::priv::VectorBuilder<T, N, NN>::build(this->_data, head, args...);
+    }
+
+
+    Vector<T, N>& operator=(const Vector<T, N>& rhs)
+    {
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] = rhs._data[i];
         return *this;
     }
 
-    T* data()
+    ~Vector()
     {
-        return _data;
+
     }
 
     const T* data() const
     {
-        return _data;
+        return this->_data;
     }
 
-    T& operator[](int n)
+    T* data()
     {
-        return _data[n];
+        return this->_data;
     }
 
-    const T& operator[](int n) const
+    const T& operator[](size_t i) const
     {
-        return _data[n];
+        return this->_data[i];
     }
 
-    Vector<T, Dimension>& operator+=(T scalar)
+    T& operator[](size_t i)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] += scalar;
+        return this->_data[i];
+    }
+
+    Vector<T, N>& operator+=(Vector<T, N> rhs)
+    {
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] += rhs._data[i];
         return *this;
     }
 
-    Vector<T, Dimension>& operator-=(T scalar)
+    Vector<T, N>& operator-=(Vector<T, N> rhs)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] -= scalar;
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] -= rhs._data[i];
         return *this;
     }
 
-    Vector<T, Dimension>& operator*=(T scalar)
+    Vector<T, N>& operator*=(Vector<T, N> rhs)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] *= scalar;
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] *= rhs._data[i];
         return *this;
     }
 
-    Vector<T, Dimension>& operator/=(T scalar)
+    Vector<T, N>& operator/=(Vector<T, N> rhs)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] /= scalar;
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] /= rhs._data[i];
         return *this;
     }
 
-    Vector<T, Dimension>& operator+=(const Vector<T, Dimension>& vector)
+    Vector<T, N>& operator%=(Vector<T, N> rhs)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] += vector._data[i];
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] %= rhs._data[i];
         return *this;
     }
 
-    Vector<T, Dimension>& operator-=(const Vector<T, Dimension>& vector)
+    template <typename TT>
+    Vector<T, N>& operator+=(TT scalar)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] -= vector._data[i];
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] += scalar;
         return *this;
     }
 
-    Vector<T, Dimension>& operator*=(const Vector<T, Dimension>& vector)
+    template <typename TT>
+    Vector<T, N>& operator-=(TT scalar)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] *= vector._data[i];
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] -= scalar;
         return *this;
     }
 
-    Vector<T, Dimension>& operator/=(const Vector<T, Dimension>& vector)
+
+    template <typename TT>
+    Vector<T, N>& operator*=(TT scalar)
     {
-        for (unsigned i = 0; i < Dimension; ++i)
-            _data[i] /= vector._data[i];
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] *= scalar;
         return *this;
     }
+
+    template <typename TT>
+    Vector<T, N>& operator/=(TT scalar)
+    {
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] /= scalar;
+        return *this;
+    }
+
+    template <typename TT>
+    Vector<T, N>& operator%=(TT scalar)
+    {
+        for (size_t i = 0; i < N; ++i)
+            this->_data[i] %= scalar;
+        return *this;
+    }
+
 };
 
-template <typename T, unsigned Dimension>
-bool operator==(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
+template <typename T, size_t N>
+inline bool operator==(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    for (unsigned i = 0; i < Dimension; ++i)
+    for (size_t i = 0; i < N; ++i)
     {
         if (lhs[i] != rhs[i])
             return false;
@@ -235,174 +246,157 @@ bool operator==(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs
     return true;
 }
 
-template <typename T, unsigned Dimension>
-bool operator!=(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
+template <typename T, size_t N>
+inline bool operator!=(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    return !(lsh == rhs);
+    return !(lhs == rhs);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator+(const Vector<T, Dimension>& vector)
+template <typename T, size_t N>
+inline bool operator<(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    return vector;
+    for (size_t i = 0; i < N; ++i)
+    {
+        if (lhs[i] != rhs[i])
+            return lhs[i] < rhs[i];
+    }
+    return false;
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator-(const Vector<T, Dimension>& vector)
+template <typename T, size_t N>
+inline bool operator<=(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    Vector<T, Dimension> v;
-    for (unsigned i = 0; i < Dimension; ++i)
-        v[i] = -(vector[i]);
+    return (lhs == rhs) || (lhs < rhs);
+}
+
+template <typename T, size_t N>
+inline bool operator>(Vector<T, N> lhs, Vector<T, N> rhs)
+{
+    return !(lhs <= rhs);
+}
+
+template <typename T, size_t N>
+inline bool operator>=(Vector<T, N> lhs, Vector<T, N> rhs)
+{
+    return !(lhs < rhs);
+}
+
+template <typename T, size_t N>
+inline Vector<T, N> operator+(Vector<T, N> src)
+{
+    Vector<T, N> v(src);
+
+    for (size_t i = 0; i < N; ++i)
+        v[i] = +(v[i]);
     return v;
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator+(const Vector<T, Dimension>& vector, T scalar)
+template <typename T, size_t N>
+inline Vector<T, N> operator-(Vector<T, N> src)
 {
-    Vector<T, Dimension> v(vector);
-    v += scalar;
+    Vector<T, N> v(src);
+
+    for (size_t i = 0; i < N; ++i)
+        v[i] = -(v[i]);
     return v;
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator-(const Vector<T, Dimension>& vector, T scalar)
+template <typename T, size_t N>
+inline Vector<T, N> operator+(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    Vector<T, Dimension> v(vector);
-    v -= scalar;
-    return v;
+    return (lhs += rhs);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator*(const Vector<T, Dimension>& vector, T scalar)
+template <typename T, size_t N>
+inline Vector<T, N> operator-(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    Vector<T, Dimension> v(vector);
-    v *= scalar;
-    return v;
+    return (lhs -= rhs);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator*(T scalar, const Vector<T, Dimension>& vector)
+template <typename T, size_t N>
+inline Vector<T, N> operator*(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    Vector<T, Dimension> v;
-    for (unsigned i = 0; i < Dimension; ++i)
-        v[i] = scalar * vector[i];
-    return v;
+    return (lhs *= rhs);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator/(const Vector<T, Dimension>& vector, T scalar)
+template <typename T, size_t N>
+inline Vector<T, N> operator/(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    Vector<T, Dimension> v(vector);
-    v /= scalar;
-    return v;
+    return (lhs /= rhs);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator+(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
+template <typename T, size_t N>
+inline Vector<T, N> operator%(Vector<T, N> lhs, Vector<T, N> rhs)
 {
-    Vector<T, Dimension> v(lhs);
-    v += rhs;
-    return v;
+    return (lhs %= rhs);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator-(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
+template <typename T, size_t N, typename TT>
+inline Vector<T, N> operator+(Vector<T, N> lhs, TT scalar)
 {
-    Vector<T, Dimension> v(lhs);
-    v -= rhs;
-    return v;
+    return (lhs += scalar);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator*(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
+template <typename T, size_t N, typename TT>
+inline Vector<T, N> operator-(Vector<T, N> lhs, TT scalar)
 {
-    Vector<T, Dimension> v(lhs);
-    v *= rhs;
-    return v;
+    return (lhs -= scalar);
 }
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> operator/(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
+template <typename T, size_t N, typename TT>
+inline Vector<T, N> operator*(Vector<T, N> lhs, TT scalar)
 {
-    Vector<T, Dimension> v(lhs);
-    v /= rhs;
-    return v;
+    return (lhs *= scalar);
 }
 
-template <typename T, unsigned Dimension>
-bool null(const Vector<T, Dimension>& vector)
+template <typename T, size_t N, typename TT>
+inline Vector<T, N> operator/(Vector<T, N> lhs, TT scalar)
 {
-    return (vector == Vector<T, Dimension>);
+    return (lhs /= scalar);
 }
 
-template <typename T, unsigned Dimension>
-T length2(const Vector<T, Dimension>& vector)
+template <typename T, size_t N, typename TT>
+inline Vector<T, N> operator%(Vector<T, N> lhs, TT scalar)
 {
-    T acc = T();
-    for (unsigned i = 0; i < Dimension; ++i)
-        acc += vector[i] * vector[i];
-    return acc;
+    return (lhs %= scalar);
 }
 
-template <typename T, unsigned Dimension>
-T length(const Vector<T, Dimension>& vector)
+template <typename T, size_t N, typename TT>
+inline Vector<T, N> operator*(TT scalar, Vector<T, N> rhs)
 {
-    return sqrt(length2(vector));
+    Vector<T, N> tmp;
+
+    for (size_t i = 0; i < N; ++i)
+        tmp[i] = scalar * rhs;
+    return tmp;
 }
 
-template <typename T, unsigned Dimension>
-T distance2(const Vector<T, Dimension>& from, const Vector<T, Dimension>& to)
-{
-    return length2(to - from);
-}
+template <typename T> using Vector2 = Vector<T, 2>;
+template <typename T> using Vector3 = Vector<T, 3>;
+template <typename T> using Vector4 = Vector<T, 4>;
 
-template <typename T, unsigned Dimension>
-T distance(const Vector<T, Dimension>& from, const Vector<T, Dimension>& to)
-{
-    return sqrt(distance2(from, to));
-}
+using Vector2i = Vector2<int32_t>;
+using Vector3i = Vector3<int32_t>;
+using Vector4i = Vector4<int32_t>;
 
-template <typename T, unsigned Dimension>
-Vector<T, Dimension> normal(const Vector<T, Dimension>& vector)
-{
-    return vector / length(vector);
-}
+using Vector2u = Vector2<uint32_t>;
+using Vector3u = Vector3<uint32_t>;
+using Vector4u = Vector4<uint32_t>;
 
-template <typename T, unsigned Dimension>
-T dot(const Vector<T, Dimension>& lhs, const Vector<T, Dimension>& rhs)
-{
-    Vector<T, Dimension> v(lhs * rhs);
-    T acc = T();
-    for (unsigned i = 0; i < Dimension; ++i)
-        acc += v[i];
-    return acc;
-}
+using Vector2l = Vector2<int64_t>;
+using Vector3l = Vector3<int64_t>;
+using Vector4l = Vector4<int64_t>;
 
-template <typename T>
-T cross(const Vector<T, 2> & lhs, const Vector<T, 2> & rhs)
-{
-    return lhs.x * rhs.y - lhs.y * rhs.x;
-}
+using Vector2ul = Vector2<uint64_t>;
+using Vector3ul = Vector3<uint64_t>;
+using Vector4ul = Vector4<uint64_t>;
 
-template <typename T>
-Vector<T, 2> cross(const Vector<T, 2> & vector)
-{
-    return Vector<2, T>(vector.y, -vector.x);
-}
+using Vector2f = Vector2<float>;
+using Vector3f = Vector3<float>;
+using Vector4f = Vector4<float>;
 
-template <typename T>
-Vector<T, 3> cross(const Vector<T, 3> & lhs, const Vector<T, 3> & rhs)
-{
-    return Vector<3, T>(
-        lhs.y * rhs.z - lhs.z * rhs.y,
-        lhs.z * rhs.x - lhs.x * rhs.z,
-        lhs.x * rhs.y - lhs.y * rhs.x
-    );
-}
-
-using Vector1f = Vector<float, 1>;
-using Vector2f = Vector<float, 2>;
-using Vector3f = Vector<float, 3>;
-using Vector4f = Vector<float, 4>;
+using Vector2b = Vector2<uint8_t>;
+using Vector3b = Vector3<uint8_t>;
+using Vector4b = Vector4<uint8_t>;
 
 #endif

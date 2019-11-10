@@ -4,11 +4,13 @@
 #include <cstdint>
 #include <NoFlowers/Util/NonCopyable.h>
 #include <NoFlowers/Render/OpenGL.h>
+#include <NoFlowers/Math/Matrix.h>
 
 class ShaderBuilder;
 
 enum class ShaderUniform : uint8_t
 {
+    MVP = 0
 };
 
 class Shader : private NonCopyable
@@ -23,9 +25,11 @@ public:
     Shader& operator=(Shader&& other);
 
     void bind() const;
+    void uniform(ShaderUniform uniform, Matrix4f mat);
 
 private:
-    GLuint _program;
+    GLuint  _program;
+    GLuint  _locations[32];
 };
 
 #endif

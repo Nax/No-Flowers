@@ -93,6 +93,7 @@ Shader ShaderBuilder::link()
     else
     {
         shader._program = _program;
+        shader._locations[int(ShaderUniform::MVP)] = glGetUniformLocation(_program, "mvp");
         _program = 0;
     }
     _reset();

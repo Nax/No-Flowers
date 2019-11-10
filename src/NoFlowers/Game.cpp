@@ -5,18 +5,21 @@
 #include <NoFlowers/Render/ShaderBuilder.h>
 #include <NoFlowers/Render/VertexBufferBuilder.h>
 
+
 static const char* kShaderVertex = R"(
 #version 150
 
 in vec3 vPosition;
 in vec4 vColor;
 
+uniform mat4 mvp;
+
 out vec4 fColor;
 
 void main()
 {
     fColor = vColor;
-    gl_Position = vec4(vPosition, 1.0);
+    gl_Position =  vec4(vPosition, 1.0) * mvp;
 }
 )";
 
@@ -68,40 +71,51 @@ static void gameInitShader(Game* game)
     game->shader = builder.link();
 }
 
-static void makeQuad(VertexBufferBuilder& builder, Vector3f base, Vector3f d1, Vector3f d2)
+static void makeQuad(VertexBufferBuilder& builder, Vector4f color, Vector3f base, Vector3f d1, Vector3f d2)
 {
     builder.push(base);
-    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(color);
     builder.push(base + d1);
-    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(color);
     builder.push(base + d1 + d2);
-    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(color);
     builder.push(base + d2);
-    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(color);
     builder.makeQuad();
+}
+
+static void makeCube(VertexBufferBuilder& builder, Vector3f pos)
+{
+    Vector4f color = Vector4f(((pos / 2.f) + 5.f) / 10.f, 1.f);
+
+    makeQuad(builder, color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    makeQuad(builder, color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, color, pos, Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, color, pos + Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, color, pos + Vector3f(0.f, 1.f, 0.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, color, pos + Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
 }
 
 static void gameInitVertexBuffer(Game* game)
 {
     VertexBufferBuilder builder(game->vb);
 
-    float x;
-    float y;
-    float z;
-
     builder.attr(0, 3);
     builder.attr(1, 4);
 
-    x = 0;
-    y = 0;
-    z = 0;
-
-    makeQuad(builder, Vector3f(x, y, z), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
-    makeQuad(builder, Vector3f(x, y, z), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, Vector3f(x, y, z), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, Vector3f(x + 1.f, y, z), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, Vector3f(x, y + 1.f, z), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, Vector3f(x, y, z + 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    for (int x = 0; x < 10; ++x)
+    {
+        for (int y = 0; y < 10; ++y)
+        {
+            for (int z = 0; z < 10; ++z)
+            {
+                Vector3f pos(x, y, z);
+                pos -= 5;
+                pos *= 2;
+                makeCube(builder, pos);
+            }
+        }
+    }
 
     builder.submit();
 }
@@ -113,7 +127,14 @@ void gameInit(Game* g)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
 
     g->window = SDL_CreateWindow(
         "No Flowers",
@@ -179,16 +200,32 @@ void gameUpdate(Game* game)
         if (e.type == SDL_QUIT)
             game->running = false;
     }
+
+    game->camera.move(Vector3f(0.f, 0.01f, 0.f));
 }
 
 void gameRender(Game* game, float dt)
 {
+    Matrix4f model;
+    Matrix4f view;
+    Matrix4f projection;
+    Matrix4f mvp;
+
+    model = Matrix4f::identity();
+    view = game->camera.viewMatrix();
+    projection = game->camera.projectionMatrix();
+
+    mvp = projection * view;
+
+    glViewport(0, 0, 800, 600);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_MULTISAMPLE);
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     game->shader.bind();
+    game->shader.uniform(ShaderUniform::MVP, mvp);
     game->vb.bind();
-    glDrawElements(GL_TRIANGLES, game->vb.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)game->vb.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     SDL_GL_SwapWindow(game->window);
 }

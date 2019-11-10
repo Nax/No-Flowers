@@ -51,7 +51,7 @@ void VertexBufferBuilder::makeTriangle()
     _indices.push_back(_index + 2);
 
     _index += 3;
-    _size++;
+    _index += 3;
 }
 
 void VertexBufferBuilder::makeQuad()
@@ -64,7 +64,7 @@ void VertexBufferBuilder::makeQuad()
     _indices.push_back(_index + 3);
 
     _index += 4;
-    _size += 2;
+    _size += 6;
 }
 
 void VertexBufferBuilder::submit()
