@@ -1,7 +1,9 @@
+#include <cstdio>
 #include <chrono>
 #include <NoFlowers/Game.h>
 #include <NoFlowers/Render/OpenGL.h>
 #include <NoFlowers/Render/ShaderBuilder.h>
+#include <NoFlowers/Render/VertexBufferBuilder.h>
 
 static const char* kShaderVertex = R"(
 #version 150
@@ -23,13 +25,35 @@ static const char* kShaderFragment = R"(
 
 in vec4 fColor;
 
-out outColor;
+out vec4 outColor;
 
 void main()
 {
     outColor = fColor;
 }
 )";
+
+static FILE* debugFile;
+
+static void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+    fprintf(debugFile, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+        (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+        type, severity, message);
+}
+
+static void gameDisableDebug()
+{
+    fclose(debugFile);
+}
+
+static void gameEnableDebug()
+{
+    debugFile = fopen("debug.txt", "w");
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(&MessageCallback, 0);
+    atexit(&gameDisableDebug);
+}
 
 static void gameInitShader(Game* game)
 {
@@ -42,6 +66,44 @@ static void gameInitShader(Game* game)
     builder.bindAttribLocation("vColor", 1);
 
     game->shader = builder.link();
+}
+
+static void makeQuad(VertexBufferBuilder& builder, Vector3f base, Vector3f d1, Vector3f d2)
+{
+    builder.push(base);
+    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(base + d1);
+    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(base + d1 + d2);
+    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.push(base + d2);
+    builder.push(Vector4f(1.f, 0.f, 0.f, 1.f));
+    builder.makeQuad();
+}
+
+static void gameInitVertexBuffer(Game* game)
+{
+    VertexBufferBuilder builder(game->vb);
+
+    float x;
+    float y;
+    float z;
+
+    builder.attr(0, 3);
+    builder.attr(1, 4);
+
+    x = 0;
+    y = 0;
+    z = 0;
+
+    makeQuad(builder, Vector3f(x, y, z), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    makeQuad(builder, Vector3f(x, y, z), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(x, y, z), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(x + 1.f, y, z), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(x, y + 1.f, z), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(x, y, z + 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+
+    builder.submit();
 }
 
 void gameInit(Game* g)
@@ -63,9 +125,11 @@ void gameInit(Game* g)
     );
     g->gl = SDL_GL_CreateContext(g->window);
     glewInit();
+    gameEnableDebug();
     SDL_GL_SetSwapInterval(1);
     g->camera.setPerspective(90.f, 800.f / 600.f, 0.1f, 1000.f);
     gameInitShader(g);
+    gameInitVertexBuffer(g);
 }
 
 void gameQuit(Game* g)
@@ -119,7 +183,12 @@ void gameUpdate(Game* game)
 
 void gameRender(Game* game, float dt)
 {
-    glClearColor(1.f, 0.f, 0.f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    game->shader.bind();
+    game->vb.bind();
+    glDrawElements(GL_TRIANGLES, game->vb.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
     SDL_GL_SwapWindow(game->window);
 }

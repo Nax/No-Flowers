@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <NoFlowers/Interface/Camera.h>
 #include <NoFlowers/Render/Shader.h>
+#include <NoFlowers/Render/VertexBuffer.h>
 
 struct Game
 {
@@ -13,6 +14,7 @@ struct Game
     SDL_GLContext   gl;
     Camera          camera;
     Shader          shader;
+    VertexBuffer    vb;
 };
 
 void gameInit(Game* game);

@@ -2,6 +2,7 @@
 #define RENDER_SHADER_BUILDER_H 1
 
 #include <vector>
+#include <NoFlowers/Util/NonCopyable.h>
 #include <NoFlowers/Render/Shader.h>
 
 enum class ShaderType
@@ -10,7 +11,7 @@ enum class ShaderType
     Fragment
 };
 
-class ShaderBuilder
+class ShaderBuilder : private NonCopyable
 {
 public:
     ShaderBuilder();
