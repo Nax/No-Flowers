@@ -10,6 +10,7 @@ static const char* kShaderVertex = R"(
 #version 150
 
 in vec3 vPosition;
+in vec3 vNormal;
 in vec4 vColor;
 
 uniform mat4 mvp;
@@ -18,8 +19,10 @@ out vec4 fColor;
 
 void main()
 {
-    fColor = vColor;
-    gl_Position =  vec4(vPosition, 1.0) * mvp;
+    vec3 lightDir = normalize(vec3(1.0, 2.0, -10.0));
+    float light = mix(0.5, 1.0, max(dot(lightDir, -vNormal), 0));
+    fColor = vColor * light;
+    gl_Position = vec4(vPosition, 1.0) * mvp;
 }
 )";
 
@@ -66,20 +69,25 @@ static void gameInitShader(Game* game)
     builder.addSource(ShaderType::Fragment, kShaderFragment);
 
     builder.bindAttribLocation("vPosition", 0);
-    builder.bindAttribLocation("vColor", 1);
+    builder.bindAttribLocation("vNormal", 1);
+    builder.bindAttribLocation("vColor", 2);
 
     game->shader = builder.link();
 }
 
-static void makeQuad(VertexBufferBuilder& builder, Vector4f color, Vector3f base, Vector3f d1, Vector3f d2)
+static void makeQuad(VertexBufferBuilder& builder, Vector3f normal, Vector4f color, Vector3f base, Vector3f d1, Vector3f d2)
 {
     builder.push(base);
+    builder.push(normal);
     builder.push(color);
     builder.push(base + d1);
+    builder.push(normal);
     builder.push(color);
     builder.push(base + d1 + d2);
+    builder.push(normal);
     builder.push(color);
     builder.push(base + d2);
+    builder.push(normal);
     builder.push(color);
     builder.makeQuad();
 }
@@ -88,12 +96,12 @@ static void makeCube(VertexBufferBuilder& builder, Vector3f pos)
 {
     Vector4f color = Vector4f(((pos / 2.f) + 5.f) / 10.f, 1.f);
 
-    makeQuad(builder, color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
-    makeQuad(builder, color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, color, pos, Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, color, pos + Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, color, pos + Vector3f(0.f, 1.f, 0.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, color, pos + Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    makeQuad(builder, Vector3f(0.f, 0.f, -1.f), color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    makeQuad(builder, Vector3f(0.f, -1.f, 0.f), color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(-1.f, 0.f, 0.f), color, pos, Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f( 1.f, 0.f, 0.f), color, pos + Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(0.f,  1.f, 0.f), color, pos + Vector3f(0.f, 1.f, 0.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    makeQuad(builder, Vector3f(0.f, 0.f,  1.f), color, pos + Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
 }
 
 static void gameInitVertexBuffer(Game* game)
@@ -101,7 +109,8 @@ static void gameInitVertexBuffer(Game* game)
     VertexBufferBuilder builder(game->vb);
 
     builder.attr(0, 3);
-    builder.attr(1, 4);
+    builder.attr(1, 3);
+    builder.attr(2, 4);
 
     for (int x = 0; x < 10; ++x)
     {
