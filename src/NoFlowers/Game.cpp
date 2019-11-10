@@ -4,6 +4,8 @@
 #include <NoFlowers/Render/OpenGL.h>
 #include <NoFlowers/Render/ShaderBuilder.h>
 #include <NoFlowers/Render/VertexBufferBuilder.h>
+#include <NoFlowers/World/Block.h>
+#include <NoFlowers/World/Material.h>
 
 
 static const char* kShaderVertex = R"(
@@ -20,7 +22,7 @@ out vec4 fColor;
 void main()
 {
     vec3 lightDir = normalize(vec3(1.0, 2.0, -10.0));
-    float light = mix(0.5, 1.0, max(dot(lightDir, -vNormal), 0));
+    float light = mix(0.6, 1.0, max(dot(lightDir, -vNormal), 0.0));
     fColor = vColor * light;
     gl_Position = vec4(vPosition, 1.0) * mvp;
 }
@@ -131,6 +133,9 @@ static void gameInitVertexBuffer(Game* game)
 
 void gameInit(Game* g)
 {
+    Material::init();
+    Block::init();
+
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
