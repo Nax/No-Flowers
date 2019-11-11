@@ -103,14 +103,20 @@ static void makeQuad(VertexBufferBuilder& builder, Vector3f normal, Vector4f col
     builder.makeQuad();
 }
 
-static void makeCube(VertexBufferBuilder& builder, Vector4f color, Vector3f pos)
+static void makeCube(VertexBufferBuilder& builder, const Chunk& chunk, unsigned linear, Vector4f color, Vector3f pos)
 {
-    makeQuad(builder, Vector3f(0.f, 0.f, -1.f), color, pos, Vector3f(0.f, 1.f, 0.f), Vector3f(1.f, 0.f, 0.f));
-    makeQuad(builder, Vector3f(0.f, -1.f, 0.f), color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, Vector3f(-1.f, 0.f, 0.f), color, pos, Vector3f(0.f, 0.f, 1.f), Vector3f(0.f, 1.f, 0.f));
-    makeQuad(builder, Vector3f(1.f, 0.f, 0.f), color, pos + Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
-    makeQuad(builder, Vector3f(0.f, 1.f, 0.f), color, pos + Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f));
-    makeQuad(builder, Vector3f(0.f, 0.f, 1.f), color, pos + Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    if (chunk.isAdjacent(linear, DIR_X_POS))
+        makeQuad(builder, Vector3f(1.f, 0.f, 0.f), color, pos + Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    if (chunk.isAdjacent(linear, DIR_Y_POS))
+        makeQuad(builder, Vector3f(0.f, 1.f, 0.f), color, pos + Vector3f(0.f, 1.f, 0.f), Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f));
+    if (chunk.isAdjacent(linear, DIR_Z_POS))
+        makeQuad(builder, Vector3f(0.f, 0.f, 1.f), color, pos + Vector3f(0.f, 0.f, 1.f), Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 1.f, 0.f));
+    if (chunk.isAdjacent(linear, DIR_X_NEG))
+        makeQuad(builder, Vector3f(-1.f, 0.f, 0.f), color, pos, Vector3f(0.f, 0.f, 1.f), Vector3f(0.f, 1.f, 0.f));
+    if (chunk.isAdjacent(linear, DIR_Y_NEG))
+        makeQuad(builder, Vector3f(0.f, -1.f, 0.f), color, pos, Vector3f(1.f, 0.f, 0.f), Vector3f(0.f, 0.f, 1.f));
+    if (chunk.isAdjacent(linear, DIR_Z_NEG))
+        makeQuad(builder, Vector3f(0.f, 0.f, -1.f), color, pos, Vector3f(0.f, 1.f, 0.f), Vector3f(1.f, 0.f, 0.f));
 }
 
 void Renderer::_prepareChunk(const Chunk& chunk)
@@ -135,7 +141,7 @@ void Renderer::_prepareChunk(const Chunk& chunk)
         if ((unsigned)blockID)
         {
             const Material& mat = Material::fromID(Block::fromID(blockID).materialId);
-            makeCube(builder, Vector4f(Vector3f(mat.color) / 255.f, 1.f), Vector3f(x, y, z));
+            makeCube(builder, chunk, i, Vector4f(Vector3f(mat.color) / 255.f, 1.f), Vector3f(x, y, z));
         }
     }
 
