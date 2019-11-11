@@ -2,11 +2,11 @@
 #include <NoFlowers/Noise/PerlinNoiseGenerator.h>
 #include <NoFlowers/Math/Constants.h>
 
-static Vector2f randomGradient()
+static Vector2f randomGradient(Random& r)
 {
     float f;
 
-    f = ((rand() % 1024) / 1024.f) * Math::tau;
+    f = ((r.rand() % 65536) / 65536.f) * Math::tau;
     return Vector2f(cosf(f), sinf(f));
 }
 
@@ -27,13 +27,16 @@ static float lerp(float a, float b, float w)
 
 PerlinNoiseGenerator::PerlinNoiseGenerator()
 {
+
+}
+
+void PerlinNoiseGenerator::seed(Random& r)
+{
     for (int i = 0; i < PERLIN_GRADIENTS; ++i)
-        _gradients[i] = randomGradient();
+        _gradients[i] = randomGradient(r);
 }
 
 #define SQRT2 (1.41421356237f)
-
-#include <NoFlowers/Util/Log.h>
 
 float PerlinNoiseGenerator::at(Vector2f pos) const
 {

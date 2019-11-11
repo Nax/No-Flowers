@@ -3,12 +3,21 @@
 
 #include <cstdint>
 #include <NoFlowers/Math/Vector.h>
+#include <NoFlowers/Math/Random.h>
 #include <NoFlowers/Util/NonCopyable.h>
 
 template <typename Generator, size_t N>
 class OctaveGenerator : private NonCopyable
 {
 public:
+    void seed(Random& r)
+    {
+        for (size_t i = 0; i < N; ++i)
+        {
+            _generators[i].seed(r);
+        }
+    }
+
     float at(Vector2f pos)
     {
         float acc;

@@ -1,10 +1,13 @@
 #include <NoFlowers/World/WorldGenerator.h>
 #include <NoFlowers/World/World.h>
 
-WorldGenerator::WorldGenerator(World& world, uint64_t seed)
+WorldGenerator::WorldGenerator(World& world)
 : _world(world)
 {
+    Random random;
 
+    random.seed();
+    _noiseGenerator.seed(random);
 }
 
 WorldGenerator::~WorldGenerator()

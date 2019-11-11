@@ -10,7 +10,7 @@ class World;
 class WorldGenerator : private NonCopyable
 {
 public:
-    WorldGenerator(World& world, uint64_t seed);
+    WorldGenerator(World& world);
     ~WorldGenerator();
 
     void generate();

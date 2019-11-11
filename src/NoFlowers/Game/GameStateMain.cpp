@@ -5,7 +5,7 @@ void GameStateMain::init()
 {
     SDL_SetRelativeMouseMode(SDL_TRUE);
     _world = new World;
-    _worldGenerator = new WorldGenerator(*_world, 0);
+    _worldGenerator = new WorldGenerator(*_world);
     _worldGenerator->generate();
 }
 
