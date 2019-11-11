@@ -59,6 +59,11 @@ void Camera::setPerspective(float fov, float aspect, float znear, float zfar)
     _projection = perspectiveProjection(fov, aspect, znear, zfar);
 }
 
+void Camera::setOrtho(float left, float right, float bottom, float top, float znear, float zfar)
+{
+    _projection = orthogonalProjection(left, right, bottom, top, znear, zfar);
+}
+
 void Camera::move(Vector3f delta)
 {
     _position += delta;

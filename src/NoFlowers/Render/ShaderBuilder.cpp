@@ -94,6 +94,9 @@ Shader ShaderBuilder::link()
     {
         shader._program = _program;
         shader._locations[int(ShaderUniform::MVP)] = glGetUniformLocation(_program, "mvp");
+        shader._locations[int(ShaderUniform::ShadowMVP)] = glGetUniformLocation(_program, "shadowMvp");
+        shader._locations[int(ShaderUniform::ShadowTexture)] = glGetUniformLocation(_program, "shadowTexture");
+        shader._locations[int(ShaderUniform::Model)] = glGetUniformLocation(_program, "model");
         _program = 0;
     }
     _reset();

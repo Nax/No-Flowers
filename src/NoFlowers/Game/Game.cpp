@@ -32,7 +32,7 @@ void gameInit(Game* g)
     g->gl = SDL_GL_CreateContext(g->window);
     glewInit();
     SDL_GL_SetSwapInterval(1);
-    g->camera.setPerspective(90.f, 800.f / 600.f, 0.1f, 1000.f);
+    g->camera.setPerspective(90.f, 800.f / 600.f, 0.01f, 1000.f);
     g->renderer = new Renderer;
     g->stateMain = new GameStateMain(*g);
     g->stateActive = g->stateMain;
@@ -98,6 +98,7 @@ void gameRender(Game* game, float dt)
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_CULL_FACE);
     glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClearDepth(1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     game->stateMain->render(dt);
     glBindVertexArray(0);

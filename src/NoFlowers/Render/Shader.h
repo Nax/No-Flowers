@@ -10,7 +10,10 @@ class ShaderBuilder;
 
 enum class ShaderUniform : uint8_t
 {
-    MVP = 0
+    MVP = 0,
+    ShadowMVP = 1,
+    ShadowTexture = 2,
+    Model = 3
 };
 
 class Shader : private NonCopyable
@@ -25,7 +28,8 @@ public:
     Shader& operator=(Shader&& other);
 
     void bind() const;
-    void uniform(ShaderUniform uniform, Matrix4f mat);
+    void uniform(ShaderUniform uniform, Matrix4f mat) const;
+    void uniform(ShaderUniform uniform, unsigned value) const;
 
 private:
     GLuint  _program;

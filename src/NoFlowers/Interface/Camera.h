@@ -15,6 +15,7 @@ public:
     Matrix4f    viewMatrix() const;
 
     void setPerspective(float fov, float aspect, float znear, float zfar);
+    void setOrtho(float left, float right, float bottom, float top, float znear, float zfar);
     void move(Vector3f delta);
     void rotate(Vector2f delta);
 

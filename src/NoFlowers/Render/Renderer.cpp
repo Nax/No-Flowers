@@ -6,6 +6,29 @@
 #include <NoFlowers/Interface/Camera.h>
 #include <NoFlowers/Math/MatrixUtils.h>
 
+#define SHADOW_SIZE 8192
+
+static const char* kShadowShaderVertex = R"(
+#version 150
+
+in vec3 vPosition;
+
+uniform mat4 mvp;
+
+void main()
+{
+    gl_Position = vec4(vPosition, 1.0) * mvp;
+}
+)";
+
+static const char* kShadowShaderFragment = R"(
+#version 150
+
+void main()
+{
+}
+)";
+
 static const char* kShaderVertex = R"(
 #version 150
 
@@ -14,14 +37,21 @@ in vec3 vNormal;
 in vec4 vColor;
 
 uniform mat4 mvp;
+uniform mat4 shadowMvp;
+uniform mat4 model;
 
+out vec4 shadowPosition;
 out vec4 fColor;
+out float shadowBias;
 
 void main()
 {
-    vec3 lightDir = normalize(vec3(1.0, 2.0, -10.0));
+    vec3 lightDir = normalize(vec3(1.0, 1.0, -0.86));
+    float bias = 0.002 * tan(acos(dot(-vNormal, lightDir)));
+    shadowBias = clamp(bias, 0, 0.0002);
     float light = mix(0.6, 1.0, max(dot(lightDir, -vNormal), 0.0));
     fColor = vColor * light;
+    shadowPosition = ((vec4(vPosition, 1.0) * model * shadowMvp) + 1.0) * 0.5;
     gl_Position = vec4(vPosition, 1.0) * mvp;
 }
 )";
@@ -30,18 +60,33 @@ static const char* kShaderFragment = R"(
 #version 150
 
 in vec4 fColor;
+in vec4 shadowPosition;
+in float shadowBias;
+
+uniform sampler2DShadow shadowTexture;
 
 out vec4 outColor;
 
 void main()
 {
-    outColor = fColor;
+    vec2 shadowTexelSize = 1.0 / textureSize(shadowTexture, 0);
+    float light = 0;
+    for (int x = -2; x <= 2; ++x)
+    {
+        for (int y = -2; y <= 2; ++y)
+        {
+            light += texture(shadowTexture, vec3(shadowPosition.xy + vec2(x, y) * shadowTexelSize, shadowPosition.z - shadowBias));
+        }
+    }
+    light /= 25.0;
+    outColor = fColor * ((light * 0.5) + 0.5);
 }
 )";
 
 Renderer::Renderer()
 {
     _initShaders();
+    _initShadows();
 }
 
 Renderer::~Renderer()
@@ -49,28 +94,50 @@ Renderer::~Renderer()
 
 }
 
+int timeOfDay = 0;
+
 void Renderer::render(const World& world, const Camera& camera)
 {
+    timeOfDay++;
+
     Matrix4f view;
     Matrix4f projection;
     Matrix4f viewProj;
-
-    int cx;
-    int cy;
+    Matrix4f shadowView;
+    Matrix4f shadowProjection;
+    Matrix4f shadowViewProj;
+    Matrix4f shadowMvp;
 
     view = camera.viewMatrix();
     projection = camera.projectionMatrix();
 
+    shadowView = Matrix4f::identity();
+    rotate(shadowView, Vector3f(1, 0, 0), 90);
+    rotate(shadowView, Vector3f(1, 0, 0), -60);
+    rotate(shadowView, Vector3f(0, 0, 1), 45);
+    translate(shadowView, Vector3f(-80, -80, 0));
+    shadowProjection = orthogonalProjection(-113, 113, -113, 113, -150.f, 200.f);
+
     viewProj = projection * view;
+    shadowViewProj = shadowProjection * shadowView;
+    shadowMvp = shadowViewProj;
 
+    /* Render shadows */
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, _shadowFramebuffer);
+    glViewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    _shadowShader.bind();
+    _render(world, shadowViewProj, _shadowShader);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, 800, 600);
+    glActiveTexture(GL_TEXTURE0 + 0);
+    glBindTexture(GL_TEXTURE_2D, _shadowTexture);
     _shader.bind();
-    for (unsigned i = 0; i < WORLD_X * WORLD_Y; ++i)
-    {
-        cx = i % WORLD_X;
-        cy = i / WORLD_X;
-
-        _render(*world._chunks[i], cx, cy, viewProj);
-    }
+    _shader.uniform(ShaderUniform::ShadowMVP, shadowMvp);
+    _shader.uniform(ShaderUniform::ShadowTexture, 0);
+    _render(world, viewProj, _shader);
 }
 
 void Renderer::_initShaders()
@@ -85,6 +152,32 @@ void Renderer::_initShaders()
     builder.bindAttribLocation("vColor", 2);
 
     _shader = builder.link();
+
+    ShaderBuilder shadowBuilder;
+
+    shadowBuilder.addSource(ShaderType::Vertex, kShadowShaderVertex);
+    shadowBuilder.addSource(ShaderType::Fragment, kShadowShaderFragment);
+
+    shadowBuilder.bindAttribLocation("vPosition", 0);
+    _shadowShader = shadowBuilder.link();
+}
+
+void Renderer::_initShadows()
+{
+    glGenTextures(1, &_shadowTexture);
+    glBindTexture(GL_TEXTURE_2D, _shadowTexture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32, SHADOW_SIZE, SHADOW_SIZE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
+
+    glGenFramebuffers(1, &_shadowFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, _shadowFramebuffer);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, _shadowTexture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 static void makeQuad(VertexBufferBuilder& builder, Vector3f normal, Vector4f color, Vector3f base, Vector3f d1, Vector3f d2)
@@ -149,13 +242,14 @@ void Renderer::_prepareChunk(const Chunk& chunk)
     builder.submit();
 }
 
-void Renderer::_render(const Chunk& chunk, int cx, int cy, const Matrix4f& viewProj)
+void Renderer::_render(const Chunk& chunk, int cx, int cy, const Matrix4f& viewProj, const Shader& shader)
 {
     Matrix4f model;
     Matrix4f mvp;
 
     model = Matrix4f::identity();
     translate(model, Vector3f(cx * CHUNK_X, cy * CHUNK_Y, 0));
+    shader.uniform(ShaderUniform::Model, model);
 
     mvp = viewProj * model;
 
@@ -165,7 +259,22 @@ void Renderer::_render(const Chunk& chunk, int cx, int cy, const Matrix4f& viewP
         chunk._dirty = false;
     }
 
-    _shader.uniform(ShaderUniform::MVP, mvp);
+    shader.uniform(ShaderUniform::MVP, mvp);
     chunk._vertexBuffer.bind();
     glDrawElements(GL_TRIANGLES, (GLsizei)chunk._vertexBuffer.size(), GL_UNSIGNED_INT, 0);
+}
+
+void Renderer::_render(const World& world, const Matrix4f& viewProj, const Shader& shader)
+{
+    unsigned cx;
+    unsigned cy;
+
+    shader.bind();
+    for (unsigned i = 0; i < WORLD_X * WORLD_Y; ++i)
+    {
+        cx = i % WORLD_X;
+        cy = i / WORLD_X;
+
+        _render(*world._chunks[i], cx, cy, viewProj, shader);
+    }
 }

@@ -17,8 +17,15 @@ public:
 
 private:
     void    _initShaders();
+    void    _initShadows();
+
     void    _prepareChunk(const Chunk& chunk);
-    void    _render(const Chunk& chunk, int cx, int cy, const Matrix4f& viewProj);
+    void    _render(const World& world, const Matrix4f& viewProj, const Shader& shader);
+    void    _render(const Chunk& chunk, int cx, int cy, const Matrix4f& viewProj, const Shader& shader);
+
+    GLuint  _shadowTexture;
+    GLuint  _shadowFramebuffer;
+    Shader  _shadowShader;
 
     Shader  _shader;
 };
