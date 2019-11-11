@@ -2,7 +2,7 @@
 #define GAME_GAME_STATE_MAIN_H 1
 
 #include <NoFlowers/Game/GameState.h>
-#include <NoFlowers/World/Chunk.h>
+#include <NoFlowers/World/World.h>
 
 class GameStateMain : public GameState
 {
@@ -16,7 +16,7 @@ public:
     void render(float dt) override;
 
 private:
-    Chunk* _chunk;
+    World* _world;
 };
 
 #endif

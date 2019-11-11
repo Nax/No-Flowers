@@ -2,7 +2,9 @@
 #include <NoFlowers/Render/ShaderBuilder.h>
 #include <NoFlowers/Render/VertexBufferBuilder.h>
 #include <NoFlowers/World/Chunk.h>
+#include <NoFlowers/World/World.h>
 #include <NoFlowers/Interface/Camera.h>
+#include <NoFlowers/Math/MatrixUtils.h>
 
 static const char* kShaderVertex = R"(
 #version 150
@@ -47,29 +49,28 @@ Renderer::~Renderer()
 
 }
 
-void Renderer::render(const Chunk& chunk, const Camera& camera)
+void Renderer::render(const World& world, const Camera& camera)
 {
-    Matrix4f model;
     Matrix4f view;
     Matrix4f projection;
-    Matrix4f mvp;
+    Matrix4f viewProj;
 
-    model = Matrix4f::identity();
+    int cx;
+    int cy;
+
     view = camera.viewMatrix();
     projection = camera.projectionMatrix();
 
-    mvp = projection * view * model;
-
-    if (chunk._dirty)
-    {
-        _prepareChunk(chunk);
-        chunk._dirty = false;
-    }
+    viewProj = projection * view;
 
     _shader.bind();
-    _shader.uniform(ShaderUniform::MVP, mvp);
-    chunk._vertexBuffer.bind();
-    glDrawElements(GL_TRIANGLES, (GLsizei)chunk._vertexBuffer.size(), GL_UNSIGNED_INT, 0);
+    for (unsigned i = 0; i < WORLD_X * WORLD_Y; ++i)
+    {
+        cx = i % WORLD_X;
+        cy = i / WORLD_X;
+
+        _render(*world._chunks[i], cx, cy, viewProj);
+    }
 }
 
 void Renderer::_initShaders()
@@ -146,4 +147,25 @@ void Renderer::_prepareChunk(const Chunk& chunk)
     }
 
     builder.submit();
+}
+
+void Renderer::_render(const Chunk& chunk, int cx, int cy, const Matrix4f& viewProj)
+{
+    Matrix4f model;
+    Matrix4f mvp;
+
+    model = Matrix4f::identity();
+    translate(model, Vector3f(cx * CHUNK_X, cy * CHUNK_Y, 0));
+
+    mvp = viewProj * model;
+
+    if (chunk._dirty)
+    {
+        _prepareChunk(chunk);
+        chunk._dirty = false;
+    }
+
+    _shader.uniform(ShaderUniform::MVP, mvp);
+    chunk._vertexBuffer.bind();
+    glDrawElements(GL_TRIANGLES, (GLsizei)chunk._vertexBuffer.size(), GL_UNSIGNED_INT, 0);
 }

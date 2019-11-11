@@ -4,7 +4,7 @@
 void GameStateMain::init()
 {
     SDL_SetRelativeMouseMode(SDL_TRUE);
-    _chunk = new Chunk;
+    _world = new World;
 }
 
 void GameStateMain::deinit()
@@ -48,5 +48,5 @@ void GameStateMain::handleEvent(const SDL_Event& e)
 
 void GameStateMain::render(float dt)
 {
-    game.renderer->render(*_chunk, game.camera);
+    game.renderer->render(*_world, game.camera);
 }
