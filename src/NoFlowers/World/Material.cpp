@@ -9,7 +9,7 @@ void Material::init()
 #undef X
 }
 
-const Material& Material::fromId(MaterialID id)
+const Material& Material::fromID(MaterialID id)
 {
     return kMaterials[unsigned(id)];
 }

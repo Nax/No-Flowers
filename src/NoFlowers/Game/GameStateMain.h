@@ -2,6 +2,7 @@
 #define GAME_GAME_STATE_MAIN_H 1
 
 #include <NoFlowers/Game/GameState.h>
+#include <NoFlowers/World/Chunk.h>
 
 class GameStateMain : public GameState
 {
@@ -13,6 +14,9 @@ public:
     void update() override;
     void handleEvent(const SDL_Event& e) override;
     void render(float dt) override;
+
+private:
+    Chunk* _chunk;
 };
 
 #endif

@@ -17,7 +17,7 @@ public:
     MaterialID materialId;
 
     static void init();
-    static const Block& fromId(BlockID id);
+    static const Block& fromID(BlockID id);
 };
 
 #endif

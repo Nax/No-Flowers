@@ -9,7 +9,7 @@ void Block::init()
 #undef X
 }
 
-const Block& Block::fromId(BlockID id)
+const Block& Block::fromID(BlockID id)
 {
     return kBlocks[unsigned(id)];
 }

@@ -17,7 +17,7 @@ public:
     Vector3b color;
 
     static void init();
-    static const Material& fromId(MaterialID id);
+    static const Material& fromID(MaterialID id);
 };
 
 #endif
