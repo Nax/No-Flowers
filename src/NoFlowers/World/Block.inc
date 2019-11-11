@@ -1,2 +1,5 @@
 X(0, Air, Air)
-X(1, Grass, Grass)
+X(1, Bedrock, Bedrock)
+X(2, Rock, Rock)
+X(3, Dirt, Dirt)
+X(4, Grass, Grass)
