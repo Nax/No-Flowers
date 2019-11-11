@@ -1,3 +1,4 @@
+#include <cmath>
 #include <NoFlowers/Math/MatrixUtils.h>
 #include <NoFlowers/Interface/Camera.h>
 
@@ -10,6 +11,32 @@ Camera::Camera()
     _position = { 0, -30, 0 };
 }
 
+Vector3f Camera::forward() const
+{
+    float alpha;
+    float beta;
+    Vector3f v;
+
+    alpha = (_hRotation) * (Math::pi / 180.f);
+    beta = (-_vRotation) * (Math::pi / 180.f);
+
+    v.x = sinf(alpha) * cosf(beta);
+    v.y = cosf(alpha) * cosf(beta);
+    v.z = sinf(beta);
+
+    return v;
+}
+
+Vector3f Camera::side() const
+{
+    Vector3f up;
+    Vector3f fwd;
+
+    fwd = forward();
+    up = Vector3f(0.f, 0.f, 1.f);
+    return normal(cross(fwd, up));
+}
+
 Matrix4f Camera::projectionMatrix() const
 {
     return _projection;
@@ -20,8 +47,8 @@ Matrix4f Camera::viewMatrix() const
     Matrix4f mat;
 
     mat = Matrix4f::identity();
-    rotate(mat, Vector3f(1, 0, 0), 90.f);
-    rotate(mat, Vector3f(0, 1, 0), _hRotation);
+    ::rotate(mat, Vector3f(1, 0, 0), 90.f - _vRotation);
+    ::rotate(mat, Vector3f(0, 0, 1), -_hRotation);
     translate(mat, -_position);
 
     return mat;
@@ -35,4 +62,15 @@ void Camera::setPerspective(float fov, float aspect, float znear, float zfar)
 void Camera::move(Vector3f delta)
 {
     _position += delta;
+}
+
+void Camera::rotate(Vector2f delta)
+{
+    _hRotation += delta.x;
+    _vRotation += delta.y;
+
+    if (_vRotation > 89.9f)
+        _vRotation = 89.9f;
+    if (_vRotation < -89.9f)
+        _vRotation = -89.9f;
 }

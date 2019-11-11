@@ -371,6 +371,37 @@ inline Vector<T, N> operator*(TT scalar, Vector<T, N> rhs)
     return tmp;
 }
 
+template <typename T, size_t N>
+inline T abs(Vector<T, N> v)
+{
+    T acc = T();
+
+    for (size_t i = 0; i < N; ++i)
+    {
+        acc += (v[i] * v[i]);
+    }
+
+    return std::sqrt(acc);
+}
+
+template <typename T, size_t N>
+inline Vector<T, N> normal(Vector<T, N> v)
+{
+    return v / abs(v);
+}
+
+template <typename T>
+inline Vector<T, 3> cross(Vector<T, 3> a, Vector<T, 3> b)
+{
+    Vector<T, 3> c;
+
+    c.x = a.y * b.z - a.z * b.y;
+    c.y = a.z * b.x - a.x * b.z;
+    c.z = a.x * b.y - a.y * b.x;
+
+    return c;
+}
+
 template <typename T> using Vector2 = Vector<T, 2>;
 template <typename T> using Vector3 = Vector<T, 3>;
 template <typename T> using Vector4 = Vector<T, 4>;

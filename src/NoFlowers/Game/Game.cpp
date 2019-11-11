@@ -215,13 +215,12 @@ void gameUpdate(Game* game)
 
     while (SDL_PollEvent(&e))
     {
-        if (e.type == SDL_QUIT)
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)
             game->running = false;
         game->stateActive->handleEvent(e);
     }
 
     game->stateActive->update();
-    game->camera.move(Vector3f(0.f, 0.01f, 0.f));
 }
 
 void gameRender(Game* game, float dt)
