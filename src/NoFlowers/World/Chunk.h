@@ -21,6 +21,7 @@ public:
     bool isAdjacent(unsigned linear, int dir) const;
 
     void setBlock(unsigned linear, BlockID block);
+    void setBlock(unsigned x, unsigned y, unsigned z, BlockID block);
 
 private:
     void _setAdjacent(unsigned linear, int dir);

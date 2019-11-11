@@ -4,12 +4,15 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 option(SUPERBUILD "Use a superbuild" ON)
 
+set(SDL2_DIR "" CACHE PATH "The SDL2 root dir")
+set(GLEW_DIR "" CACHE PATH "The GLEW root dir")
+
 if (SUPERBUILD)
     project(SUPERBUILD)
     include(ExternalProject)
     add_subdirectory(vendor)
     ExternalProject_Add(
-        NoFlowers
+        NoFlowers_EP
         SOURCE_DIR      "${CMAKE_SOURCE_DIR}"
         INSTALL_DIR     "${CMAKE_BINARY_DIR}"
         CMAKE_ARGS
@@ -26,13 +29,15 @@ if (SUPERBUILD)
         GLEW
     )
     ExternalProject_Add_Step(
-		NoFlowers
+		NoFlowers_EP
 		reconfigure
 		COMMAND ${CMAKE_COMMAND} -E echo "Forcing a superbuild reconfigure"
 		DEPENDEES download
 		DEPENDERS configure
 		ALWAYS ON
     )
+    add_executable(NoFlowers IMPORTED)
+    set_target_properties(NoFlowers PROPERTIES IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/NoFlowers.exe")
     install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/" DESTINATION . USE_SOURCE_PERMISSIONS)
 else()
     project(NoFlowers)

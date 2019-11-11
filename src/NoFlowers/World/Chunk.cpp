@@ -10,23 +10,6 @@ Chunk::Chunk()
 
     for (int i = 0; i < 6; ++i)
         memset(_blockAdjacent[i], 0, sizeof(_blockAdjacent[i]));
-
-    for (int i = 0; i < CHUNK_X * CHUNK_Y; ++i)
-    {
-        setBlock(i, BlockID::Bedrock);
-    }
-    for (int i = CHUNK_X * CHUNK_Y; i < CHUNK_X * CHUNK_Y * 10; ++i)
-    {
-        setBlock(i, BlockID::Rock);
-    }
-    for (int i = CHUNK_X * CHUNK_Y * 10; i < CHUNK_X * CHUNK_Y * 14; ++i)
-    {
-        setBlock(i, BlockID::Dirt);
-    }
-    for (int i = CHUNK_X * CHUNK_Y * 14; i < CHUNK_X * CHUNK_Y * 15; ++i)
-    {
-        setBlock(i, BlockID::Grass);
-    }
 }
 
 Chunk::~Chunk()
@@ -99,6 +82,11 @@ void Chunk::setBlock(unsigned linear, BlockID block)
     }
 
     _dirty = true;
+}
+
+void Chunk::setBlock(unsigned x, unsigned y, unsigned z, BlockID block)
+{
+    setBlock(x + y * CHUNK_X + z * CHUNK_X * CHUNK_Y, block);
 }
 
 void Chunk::_setAdjacent(unsigned linear, int dir)

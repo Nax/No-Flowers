@@ -3,6 +3,7 @@
 
 #include <NoFlowers/Game/GameState.h>
 #include <NoFlowers/World/World.h>
+#include <NoFlowers/World/WorldGenerator.h>
 
 class GameStateMain : public GameState
 {
@@ -16,7 +17,8 @@ public:
     void render(float dt) override;
 
 private:
-    World* _world;
+    World*              _world;
+    WorldGenerator*     _worldGenerator;
 };
 
 #endif

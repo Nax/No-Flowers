@@ -402,6 +402,19 @@ inline Vector<T, 3> cross(Vector<T, 3> a, Vector<T, 3> b)
     return c;
 }
 
+template <typename T, size_t N>
+inline T dot(Vector<T, N> a, Vector<T, N> b)
+{
+    T acc = T();
+
+    for (size_t i = 0; i < N; ++i)
+    {
+        acc += a[i] * b[i];
+    }
+
+    return acc;
+}
+
 template <typename T> using Vector2 = Vector<T, 2>;
 template <typename T> using Vector3 = Vector<T, 3>;
 template <typename T> using Vector4 = Vector<T, 4>;

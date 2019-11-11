@@ -8,9 +8,11 @@
 #define WORLD_Y 10
 
 class Renderer;
+class WorldGenerator;
 class World : private NonCopyable
 {
     friend class Renderer;
+    friend class WorldGenerator;
 
 public:
     World();
